@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-import { loginAdmin } from "@/services/admin/authService";
 import { LoginPayload } from "@/types/admin/auth";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
+
+// Hardcoded credentials
+const ADMIN_EMAIL = "admin@toorrii.com";
+const ADMIN_PASSWORD = "toorrii123";
 
 export const useLogin = () => {
   const navigate = useNavigate();
@@ -15,11 +18,15 @@ export const useLogin = () => {
   const login = async (payload: LoginPayload) => {
     setIsLoading(true);
     setError(null);
-    try {
-      const data = await loginAdmin(payload);
-      // Store access and refresh tokens
-      localStorage.setItem("accessToken", data.access);
-      localStorage.setItem("refreshToken", data.refresh);
+    
+    // Simulate a brief delay for UX
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Check hardcoded credentials
+    if (payload.email === ADMIN_EMAIL && payload.password === ADMIN_PASSWORD) {
+      // Store a dummy token
+      localStorage.setItem("accessToken", "demo-access-token");
+      localStorage.setItem("refreshToken", "demo-refresh-token");
       
       // Update auth context
       setAuthenticated(true);
@@ -36,34 +43,17 @@ export const useLogin = () => {
         dismiss();
         navigate("/admin/dashboard");
       }, 1500);
-    } catch (err) {
-      let errorMessage = "Login failed. Please try again.";
-      let errorTitle = "Authentication Failed";
-      
-      if (err instanceof Error) {
-        const message = err.message.toLowerCase();
-        if (message.includes("deactivated") || message.includes("disabled")) {
-          errorTitle = "Account Deactivated";
-          errorMessage = "Your account has been deactivated. Please contact the administrator for assistance.";
-        } else if (message.includes("invalid") || message.includes("incorrect") || message.includes("wrong")) {
-          errorTitle = "Invalid Credentials";
-          errorMessage = "The email or password you entered is incorrect. Please try again.";
-        } else if (message.includes("not found") || message.includes("no user") || message.includes("doesn't exist")) {
-          errorTitle = "Account Not Found";
-          errorMessage = "No account exists with this email address. Please verify your email.";
-        } else if (message.includes("network") || message.includes("connection")) {
-          errorTitle = "Connection Error";
-          errorMessage = "Unable to connect to the server. Please check your internet connection.";
-        } else {
-          errorMessage = err.message;
-        }
-      }
-      
+    } else {
+      const errorMessage = "The email or password you entered is incorrect. Please try again.";
       setError(errorMessage);
-      toast({ title: errorTitle, description: errorMessage, variant: "destructive" });
-    } finally {
-      setIsLoading(false);
+      toast({ 
+        title: "Invalid Credentials", 
+        description: errorMessage, 
+        variant: "destructive" 
+      });
     }
+    
+    setIsLoading(false);
   };
 
   return { login, isLoading, error };
