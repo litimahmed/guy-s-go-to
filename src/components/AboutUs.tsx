@@ -17,6 +17,9 @@ const AboutUs = () => {
     const { t, language } = useTranslation();
     const { data: aboutData, isLoading } = useAboutUs();
 
+    // Import static content
+    const { staticAboutUs, getStaticTranslation } = require("@/data/staticContent");
+
     // Helper to get translated value from array-based translations
     const getTranslated = (field: { lang: string; value: string }[] | undefined): string => {
         if (!field || !Array.isArray(field)) return '';
@@ -26,36 +29,36 @@ const AboutUs = () => {
 
     const MAX_LENGTH = 100;
 
-    // Check if text exceeds max length
     const isTextTruncated = (text: string): boolean => {
         return text && text.length > MAX_LENGTH;
     };
 
-    // Truncate text to a maximum length for preview
     const truncateText = (text: string): string => {
         if (!text || text.length <= MAX_LENGTH) return text;
         return text.substring(0, MAX_LENGTH).trim() + '...';
     };
 
-    // Static card configurations with titles and API data fields - show 3 cards
+    const lang = language as 'en' | 'fr' | 'ar';
+
+    // Use API data if available, otherwise use static content
     const features = [
         {
             icon: Target,
             titleKey: "mission",
             title: language === 'fr' ? "Notre Mission" : language === 'ar' ? "مهمتنا" : "Our Mission",
-            fullText: aboutData ? getTranslated(aboutData.mission) : ''
+            fullText: aboutData ? getTranslated(aboutData.mission) : getStaticTranslation(staticAboutUs.mission, lang)
         },
         {
             icon: Eye,
             titleKey: "vision",
             title: language === 'fr' ? "Notre Vision" : language === 'ar' ? "رؤيتنا" : "Our Vision",
-            fullText: aboutData ? getTranslated(aboutData.vision) : ''
+            fullText: aboutData ? getTranslated(aboutData.vision) : getStaticTranslation(staticAboutUs.vision, lang)
         },
         {
             icon: Heart,
             titleKey: "values",
             title: language === 'fr' ? "Nos Valeurs" : language === 'ar' ? "قيمنا" : "Our Values",
-            fullText: aboutData ? getTranslated(aboutData.valeurs) : ''
+            fullText: aboutData ? getTranslated(aboutData.valeurs) : getStaticTranslation(staticAboutUs.values, lang)
         }
     ];
 
@@ -115,8 +118,8 @@ const AboutUs = () => {
                     </p>
                 </motion.div>
 
-                {/* Grid of feature cards - show 3 cards when data available */}
-                {aboutData && features.some(f => f.fullText) && (
+                {/* Grid of feature cards - always show with static or API data */}
+                {features.some(f => f.fullText) && (
                     <div className="grid md:grid-cols-3 gap-8 mb-16">
                         {features.map((feature, index) => (
                             <motion.div
@@ -139,7 +142,7 @@ const AboutUs = () => {
                                             {truncateText(feature.fullText)}
                                             {isTextTruncated(feature.fullText) && (
                                                 <Link to="/about-us" className="text-primary hover:underline ml-1 font-medium">
-                                                    En savoir plus
+                                                    {language === 'fr' ? 'En savoir plus' : language === 'ar' ? 'اقرأ المزيد' : 'Read more'}
                                                 </Link>
                                             )}
                                         </p>
