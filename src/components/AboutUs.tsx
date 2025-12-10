@@ -12,13 +12,11 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "@/contexts/TranslationContext";
 import { useAboutUs } from "@/hooks/useAboutUs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { staticAboutUs, getStaticTranslation } from "@/data/staticContent";
 
 const AboutUs = () => {
     const { t, language } = useTranslation();
     const { data: aboutData, isLoading } = useAboutUs();
-
-    // Import static content
-    const { staticAboutUs, getStaticTranslation } = require("@/data/staticContent");
 
     // Helper to get translated value from array-based translations
     const getTranslated = (field: { lang: string; value: string }[] | undefined): string => {

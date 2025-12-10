@@ -10,6 +10,7 @@ import { useTranslation } from "@/contexts/TranslationContext";
 import { useContactInfo } from "@/hooks/useContactInfo";
 import { Button } from "@/components/ui/button";
 import { TbBrandTiktok } from "react-icons/tb";
+import { staticContact, getStaticTranslation } from "@/data/staticContent";
 
 const ContactSection = () => {
   const { t, language } = useTranslation();
@@ -17,10 +18,11 @@ const ContactSection = () => {
 
   type TranslatableField = { fr: string; ar: string; en: string } | undefined;
   type Language = "en" | "fr" | "ar";
+  const lang = language as Language;
 
   const getTranslated = (field: TranslatableField) => {
     if (!field) return "";
-    return field[language as Language] || field["en"] || "";
+    return field[lang] || field["en"] || "";
   };
 
   const getText = (key: string) => {
@@ -40,49 +42,55 @@ const ContactSection = () => {
         fr: "Envoyez-nous un message",
         ar: "أرسل لنا رسالة",
       },
-      noData: {
-        en: "Contact information is currently unavailable. Please check back later or reach out through our contact page.",
-        fr: "Les informations de contact sont actuellement indisponibles. Veuillez réessayer plus tard ou nous contacter via notre page de contact.",
-        ar: "معلومات الاتصال غير متوفرة حاليًا. يرجى المحاولة لاحقًا أو التواصل معنا عبر صفحة الاتصال.",
-      },
     };
     return texts[key]?.[language] || texts[key]?.en || "";
   };
 
+  // Use API data if available, otherwise use static content
+  const displayEmail = contactData?.email || staticContact.email;
+  const displayPhone = contactData?.telephone_1 || staticContact.phone1;
+  const displayAddress = contactData?.adresse 
+    ? getTranslated(contactData.adresse) 
+    : getStaticTranslation(staticContact.address, lang);
+  const displayCity = contactData?.ville 
+    ? getTranslated(contactData.ville)
+    : getStaticTranslation(staticContact.city, lang);
+  const displayHours = contactData?.horaires || staticContact.hours;
+
   const contactItems = [
-    contactData?.email && {
+    {
       icon: Mail,
       label: "Email",
-      value: contactData.email,
-      href: `mailto:${contactData.email}`,
+      value: displayEmail,
+      href: `mailto:${displayEmail}`,
     },
-    contactData?.telephone_1 && {
+    {
       icon: Phone,
       label: language === "fr" ? "Téléphone" : language === "ar" ? "هاتف" : "Phone",
-      value: contactData.telephone_1,
-      href: `tel:${contactData.telephone_1}`,
+      value: displayPhone,
+      href: `tel:${displayPhone}`,
     },
-    contactData?.adresse && {
+    {
       icon: MapPin,
       label: language === "fr" ? "Adresse" : language === "ar" ? "عنوان" : "Address",
-      value: `${getTranslated(contactData.adresse)}${contactData.ville ? `, ${getTranslated(contactData.ville)}` : ""}`,
+      value: `${displayAddress}, ${displayCity}`,
       href: "#",
     },
-    contactData?.horaires && {
+    {
       icon: Clock,
       label: language === "fr" ? "Horaires" : language === "ar" ? "ساعات العمل" : "Hours",
-      value: contactData.horaires,
+      value: displayHours,
       href: "#",
     },
-  ].filter(Boolean);
+  ];
 
   const socialLinks = [
-    contactData?.facebook && { icon: Facebook, href: contactData.facebook, label: "Facebook" },
-    contactData?.instagram && { icon: Instagram, href: contactData.instagram, label: "Instagram" },
-    contactData?.linkedin && { icon: Linkedin, href: contactData.linkedin, label: "LinkedIn" },
-    contactData?.x && { icon: Twitter, href: contactData.x, label: "X" },
+    { icon: Facebook, href: contactData?.facebook || staticContact.socialLinks.facebook, label: "Facebook" },
+    { icon: Instagram, href: contactData?.instagram || staticContact.socialLinks.instagram, label: "Instagram" },
+    { icon: Linkedin, href: contactData?.linkedin || staticContact.socialLinks.linkedin, label: "LinkedIn" },
+    { icon: Twitter, href: contactData?.x || staticContact.socialLinks.twitter, label: "X" },
     contactData?.tiktok && { icon: TbBrandTiktok, href: contactData.tiktok, label: "TikTok" },
-  ].filter(Boolean);
+  ].filter(Boolean) as { icon: any; href: string; label: string }[];
 
   return (
     <section id="contact" className="py-24 px-4 sm:px-6 lg:px-8 bg-muted/30">
@@ -105,33 +113,27 @@ const ContactSection = () => {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="bg-card border border-border rounded-2xl p-8"
         >
-          {contactItems.length > 0 ? (
-            <div className="grid sm:grid-cols-2 gap-6 mb-8">
-              {contactItems.map((item, index) => (
-                <a
-                  key={index}
-                  href={item.href}
-                  target={item.href.startsWith("http") ? "_blank" : undefined}
-                  rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                  className="flex items-start gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors group"
-                >
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <item.icon className="w-5 h-5 text-primary" />
-                  </div>
-                  <div>
-                    <span className="text-xs text-muted-foreground block">{item.label}</span>
-                    <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
-                      {item.value}
-                    </span>
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 mb-8">
-              <p className="text-muted-foreground">{getText("noData")}</p>
-            </div>
-          )}
+          <div className="grid sm:grid-cols-2 gap-6 mb-8">
+            {contactItems.map((item, index) => (
+              <a
+                key={index}
+                href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
+                className="flex items-start gap-4 p-4 rounded-xl hover:bg-muted/50 transition-colors group"
+              >
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <item.icon className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <span className="text-xs text-muted-foreground block">{item.label}</span>
+                  <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors">
+                    {item.value}
+                  </span>
+                </div>
+              </a>
+            ))}
+          </div>
 
           {socialLinks.length > 0 && (
             <div className="border-t border-border pt-6">
