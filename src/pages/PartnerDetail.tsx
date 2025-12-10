@@ -14,10 +14,16 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { useTranslation } from "@/contexts/TranslationContext";
 import { usePartner } from "@/hooks/usePartners";
+import { staticPartners, getStaticTranslation } from "@/data/staticContent";
+
 const PartnerDetail = () => {
     const { partnerId } = useParams<{ partnerId: string; }>();
     const { t, language } = useTranslation();
     const { data: partner, isLoading, error } = usePartner(partnerId || '');
+    const lang = language as 'en' | 'fr' | 'ar';
+
+    // Find static partner as fallback
+    const staticPartner = staticPartners.find(p => p.id === partnerId);
 
     type TranslationItem = { lang: string; value: string; };
     type TranslatableField = TranslationItem[] | undefined;
@@ -36,6 +42,8 @@ const PartnerDetail = () => {
   const getImageUrl = (path: string | undefined): string => {
     if (!path) return PLACEHOLDER_IMAGE;
     if (path.startsWith('http')) return path;
+    // Check if it's a static import (already a full URL from vite)
+    if (path.startsWith('/src/') || path.includes('assets')) return path;
     const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
     const cleanBase = BASE_URL.replace(/\/api\/?$/, '');
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
@@ -63,7 +71,10 @@ const PartnerDetail = () => {
         </div>;
     }
 
-    if (error || !partner) {
+    // Use API partner if available, otherwise use static partner
+    const displayPartner = partner || staticPartner;
+
+    if (!displayPartner) {
         return <div className="min-h-screen bg-background">
             <Header />
             <div className="container mx-auto px-6 pt-32 pb-20">
@@ -81,6 +92,41 @@ const PartnerDetail = () => {
             <Footer />
         </div>;
     }
+
+    // Helper to get name (works with both API and static format)
+    const getName = () => {
+        if (partner?.nom_partenaire) return getTranslated(partner.nom_partenaire);
+        if (staticPartner) return getStaticTranslation(staticPartner.name, lang);
+        return `Partner ${partnerId}`;
+    };
+
+    // Helper to get description (works with both API and static format)
+    const getDescription = () => {
+        if (partner?.description) return getTranslated(partner.description);
+        if (staticPartner) return getStaticTranslation(staticPartner.description, lang);
+        return '';
+    };
+
+    // Helper to get logo (works with both API and static format)
+    const getLogo = () => {
+        if (partner?.logo) return getImageUrl(partner.logo);
+        if (staticPartner) return staticPartner.logo;
+        return PLACEHOLDER_IMAGE;
+    };
+
+    // Helper to get industry (works with both API and static format)
+    const getIndustry = () => {
+        if (partner?.type_partenaire) return partner.type_partenaire;
+        if (staticPartner) return getStaticTranslation(staticPartner.industry, lang);
+        return '';
+    };
+
+    // Helper to get website (works with both API and static format)
+    const getWebsite = () => {
+        if (partner?.site_web) return partner.site_web;
+        if (staticPartner) return staticPartner.website;
+        return '';
+    };
     return <div className="min-h-screen bg-background">
         <Header />
 
@@ -110,13 +156,13 @@ const PartnerDetail = () => {
 
                     <div className="relative grid md:grid-cols-[1.5fr,1fr] gap-16 items-center">
                         <div className="space-y-6">
-                            {partner.type_partenaire && <Badge className="mb-2 text-sm px-4 py-1.5">{partner.type_partenaire}</Badge>}
+                            {getIndustry() && <Badge className="mb-2 text-sm px-4 py-1.5">{getIndustry()}</Badge>}
                             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold leading-tight">
-                                {getTranslated(partner.nom_partenaire, `Partner ${partnerId}`)}
+                                {getName()}
                             </h1>
 
                             <div className="flex flex-wrap gap-6 pt-4">
-                                {partner.date_creation_entreprise && <div className="flex items-center gap-3">
+                                {partner?.date_creation_entreprise && <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-lg bg-primary/10">
                                         <Calendar className="w-5 h-5 text-primary" />
                                     </div>
@@ -149,13 +195,13 @@ const PartnerDetail = () => {
                             </div>
 
                             <div className="flex flex-wrap gap-3 pt-4">
-                                {partner.site_web && <a href={partner.site_web} target="_blank" rel="noopener noreferrer">
+                                {getWebsite() && <a href={getWebsite()} target="_blank" rel="noopener noreferrer">
                                     <Button size="lg" variant="outline" className="gap-2">
                                         {t('partner.visitWebsite')}
                                         <ExternalLink className="w-4 h-4" />
                                     </Button>
                                 </a>}
-                                {partner.email && <a href={`mailto:${partner.email}`}>
+                                {partner?.email && <a href={`mailto:${partner.email}`}>
                                     <Button size="lg" variant="outline" className="gap-2">
                                         <Mail className="w-4 h-4" />
                                         {t('contact.email')}
@@ -191,8 +237,8 @@ const PartnerDetail = () => {
                         <div className="h-full min-h-[300px] relative">
                             <div className="sticky top-8 h-full rounded-2xl flex items-center justify-center p-8">
                                 <img 
-                                    src={getImageUrl(partner.logo)} 
-                                    alt={getTranslated(partner.nom_partenaire, `Partner ${partnerId}`)} 
+                                    src={getLogo()} 
+                                    alt={getName()} 
                                     className="relative w-full h-full object-contain drop-shadow-2xl"
                                     onError={(e) => {
                                         const target = e.currentTarget;
@@ -222,12 +268,12 @@ const PartnerDetail = () => {
                             <div className="absolute -left-8 top-0 text-[12rem] font-black text-primary/5 leading-none select-none">"</div>
                             <div className="relative">
                                 <h3 className="text-5xl md:text-6xl lg:text-7xl font-black mb-12 leading-tight">
-                                    {t('partner.aboutTitle')} {getTranslated(partner.nom_partenaire, `Partner ${partnerId}`)}
+                                    {t('partner.aboutTitle')} {getName()}
                                 </h3>
 
-                                {getTranslated(partner.description) && <div className="space-y-8">
+                                {getDescription() && <div className="space-y-8">
                                     <p className="text-xl md:text-2xl text-foreground/90 leading-[1.8] font-normal tracking-wide">
-                                        {getTranslated(partner.description)}
+                                        {getDescription()}
                                     </p>
 
                                     {/* Contact Information */}

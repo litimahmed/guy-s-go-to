@@ -7,11 +7,13 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/contexts/TranslationContext";
 import { useAboutUs } from "@/hooks/useAboutUs";
 import { useContactInfo } from "@/hooks/useContactInfo";
+import { staticAboutUs, staticContact, getStaticTranslation } from "@/data/staticContent";
 
 const AboutUs = () => {
     const { t, language } = useTranslation();
     const { data: apiData, isLoading } = useAboutUs();
     const { data: contactData } = useContactInfo();
+    const lang = language as 'en' | 'fr' | 'ar';
 
     const getTranslatedValue = (field?: { lang: string; value: string }[]) => {
         if (!field) return '';
@@ -21,7 +23,7 @@ const AboutUs = () => {
 
     const getContactTranslation = (field?: { fr: string; ar: string; en: string }) => {
         if (!field) return '';
-        return field[language as 'en' | 'fr' | 'ar'] || field.en || field.fr || '';
+        return field[lang] || field.en || field.fr || '';
     };
 
     return (
@@ -47,20 +49,15 @@ const AboutUs = () => {
                         </h1>
 
                         <div className="space-y-12">
-                            {/* Show API content if available, otherwise show fallback */}
-                            {apiData?.contenu ? (
-                                <section>
-                                    <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
-                                        {getTranslatedValue(apiData.contenu)}
-                                    </p>
-                                </section>
-                            ) : !apiData && (
-                                <section>
-                                    <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
-                                        Toorrii est une plateforme innovante de gestion de files d'attente qui transforme l'expérience d'attente pour les entreprises et leurs clients. Notre solution permet une gestion intelligente et efficace des flux de visiteurs.
-                                    </p>
-                                </section>
-                            )}
+                            {/* Show API content if available, otherwise show static content */}
+                            <section>
+                                <p className="text-lg text-muted-foreground leading-relaxed whitespace-pre-line">
+                                    {apiData?.contenu 
+                                        ? getTranslatedValue(apiData.contenu)
+                                        : getStaticTranslation(staticAboutUs.content, lang)
+                                    }
+                                </p>
+                            </section>
 
                             {/* Mission Section */}
                             <section>
@@ -71,7 +68,10 @@ const AboutUs = () => {
                                     <div>
                                         <h2 className="text-2xl font-semibold mb-3">{t('aboutPage.missionTitle')}</h2>
                                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                                            {apiData?.mission ? getTranslatedValue(apiData.mission) : "Simplifier et optimiser la gestion des files d'attente pour améliorer l'expérience client et l'efficacité opérationnelle des entreprises."}
+                                            {apiData?.mission 
+                                                ? getTranslatedValue(apiData.mission) 
+                                                : getStaticTranslation(staticAboutUs.mission, lang)
+                                            }
                                         </p>
                                     </div>
                                 </div>
@@ -86,7 +86,10 @@ const AboutUs = () => {
                                     <div>
                                         <h2 className="text-2xl font-semibold mb-3">{t('aboutPage.visionTitle')}</h2>
                                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                                            {apiData?.vision ? getTranslatedValue(apiData.vision) : "Devenir la référence mondiale en matière de solutions de gestion de files d'attente intelligentes et accessibles."}
+                                            {apiData?.vision 
+                                                ? getTranslatedValue(apiData.vision) 
+                                                : getStaticTranslation(staticAboutUs.vision, lang)
+                                            }
                                         </p>
                                     </div>
                                 </div>
@@ -101,7 +104,10 @@ const AboutUs = () => {
                                     <div>
                                         <h2 className="text-2xl font-semibold mb-3">{t('aboutPage.valuesTitle')}</h2>
                                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                                            {apiData?.valeurs ? getTranslatedValue(apiData.valeurs) : "Innovation, Excellence, Satisfaction client, Transparence et Engagement envers nos partenaires."}
+                                            {apiData?.valeurs 
+                                                ? getTranslatedValue(apiData.valeurs) 
+                                                : getStaticTranslation(staticAboutUs.values, lang)
+                                            }
                                         </p>
                                     </div>
                                 </div>
@@ -116,7 +122,10 @@ const AboutUs = () => {
                                     <div>
                                         <h2 className="text-2xl font-semibold mb-3">{t('aboutPage.whoWeServeTitle')}</h2>
                                         <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                                            {apiData?.qui_nous_servons ? getTranslatedValue(apiData.qui_nous_servons) : "Entreprises, administrations, hôpitaux, banques et tout établissement souhaitant optimiser la gestion de leurs visiteurs."}
+                                            {apiData?.qui_nous_servons 
+                                                ? getTranslatedValue(apiData.qui_nous_servons) 
+                                                : getStaticTranslation(staticAboutUs.whoWeServe, lang)
+                                            }
                                         </p>
                                     </div>
                                 </div>
@@ -126,28 +135,32 @@ const AboutUs = () => {
                             <section className="pt-8 border-t border-border">
                                 <h2 className="text-2xl font-semibold mb-4">{t('aboutPage.whyChooseTitle')}</h2>
                                 <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
-                                    {apiData?.pourquoi_choisir_nous ? getTranslatedValue(apiData.pourquoi_choisir_nous) : "Une solution fiable, intuitive et personnalisable qui s'adapte à vos besoins spécifiques avec un support technique dédié."}
+                                    {apiData?.pourquoi_choisir_nous 
+                                        ? getTranslatedValue(apiData.pourquoi_choisir_nous) 
+                                        : getStaticTranslation(staticAboutUs.whyChooseUs, lang)
+                                    }
                                 </p>
                             </section>
 
                             <section className="pt-8 border-t border-border">
                                 <h2 className="text-2xl font-semibold mb-4">{t('aboutPage.getInTouchTitle')}</h2>
                                 <p className="text-muted-foreground leading-relaxed mb-4">
-                                    {getContactTranslation(contactData?.message_acceuil) || t('aboutPage.getInTouchText')}
+                                    {contactData?.message_acceuil 
+                                        ? getContactTranslation(contactData.message_acceuil)
+                                        : getStaticTranslation(staticContact.welcomeMessage, lang)
+                                    }
                                 </p>
                                 <div className="space-y-2 text-muted-foreground">
-                                    {contactData?.email && <p>Email : {contactData.email}</p>}
-                                    {contactData?.telephone_1 && <p>Téléphone 1 : {contactData.telephone_1}</p>}
-                                    {contactData?.telephone_2 && <p>Téléphone 2 : {contactData.telephone_2}</p>}
-                                    {contactData?.telephone_fixe && <p>Fax : {contactData.telephone_fixe}</p>}
-                                    {contactData?.adresse && <p>Adresse : {getContactTranslation(contactData.adresse)}</p>}
-                                    {!contactData && (
-                                        <>
-                                            <p>{t('aboutPage.email')}</p>
-                                            <p>{t('aboutPage.phone')}</p>
-                                            <p>{t('aboutPage.address')}</p>
-                                        </>
-                                    )}
+                                    <p>Email : {contactData?.email || staticContact.email}</p>
+                                    <p>{language === 'fr' ? 'Téléphone 1' : language === 'ar' ? 'هاتف 1' : 'Phone 1'} : {contactData?.telephone_1 || staticContact.phone1}</p>
+                                    <p>{language === 'fr' ? 'Téléphone 2' : language === 'ar' ? 'هاتف 2' : 'Phone 2'} : {contactData?.telephone_2 || staticContact.phone2}</p>
+                                    <p>{language === 'fr' ? 'Adresse' : language === 'ar' ? 'عنوان' : 'Address'} : {contactData?.adresse 
+                                        ? getContactTranslation(contactData.adresse)
+                                        : getStaticTranslation(staticContact.address, lang)
+                                    }, {contactData?.ville 
+                                        ? getContactTranslation(contactData.ville)
+                                        : getStaticTranslation(staticContact.city, lang)
+                                    }</p>
                                 </div>
                             </section>
                         </div>

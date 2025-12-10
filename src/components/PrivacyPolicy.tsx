@@ -1,8 +1,6 @@
 /**
  * @file PrivacyPolicy.tsx
- * @description This component renders a section on the homepage that provides a brief overview of the company's privacy policy.
- * It highlights key privacy features and includes a call-to-action to read the full policy.
- * The component is animated with Framer Motion for a dynamic and engaging user experience.
+ * @description Privacy policy section on homepage with static content fallback.
  */
 
 import { motion } from "framer-motion";
@@ -12,14 +10,12 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "@/contexts/TranslationContext";
 import { usePrivacyPolicy } from "@/hooks/usePrivacyPolicy";
 import { Skeleton } from "@/components/ui/skeleton";
+import { staticPrivacyPolicy, getStaticTranslation } from "@/data/staticContent";
 
-/**
- * @component PrivacyPolicy
- * @description The main component for the privacy policy section.
- */
 const PrivacyPolicy = () => {
     const { t, language } = useTranslation();
     const { data: privacyData, isLoading } = usePrivacyPolicy();
+    const lang = language as 'en' | 'fr' | 'ar';
 
     const getText = (key: string) => {
         const texts: Record<string, Record<string, string>> = {
@@ -61,19 +57,24 @@ const PrivacyPolicy = () => {
 
     const apiSections = getContentSections();
 
-    // Map API sections to features - show 3 cards when data is available
-    const privacyFeatures = apiSections.map((section, index) => ({
-        id: `section-${index}`,
-        title: getTranslated(section.titre),
-        description: getTranslated(section.paragraphe)
-    })).filter(feature => feature.title || feature.description);
+    // Use API sections if available, otherwise use static content (first 3 sections)
+    const privacyFeatures = apiSections.length > 0 
+        ? apiSections.map((section, index) => ({
+            id: `section-${index}`,
+            title: getTranslated(section.titre),
+            description: getTranslated(section.paragraphe)
+        })).filter(feature => feature.title || feature.description)
+        : staticPrivacyPolicy.sections.slice(0, 3).map(section => ({
+            id: section.id,
+            title: getStaticTranslation(section.title, lang),
+            description: getStaticTranslation(section.content, lang)
+        }));
 
     const truncateText = (text: string, maxLength: number = 120) => {
         if (text.length <= maxLength) return text;
         return text.substring(0, maxLength).trim() + "...";
     };
 
-    // Loading state
     if (isLoading) {
         return (
             <section id="privacy" className="py-24 px-4 sm:px-6 lg:px-8 relative overflow-hidden bg-muted/30">
@@ -84,8 +85,8 @@ const PrivacyPolicy = () => {
                         <Skeleton className="h-12 w-64 mx-auto mb-6" />
                         <Skeleton className="h-6 w-96 mx-auto" />
                     </div>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-                        {[1, 2, 3, 4].map((i) => (
+                    <div className="grid md:grid-cols-3 gap-6 mb-16">
+                        {[1, 2, 3].map((i) => (
                             <div key={i} className="p-6 rounded-2xl bg-card border border-border">
                                 <Skeleton className="w-14 h-14 rounded-xl mb-4" />
                                 <Skeleton className="h-6 w-32 mb-3" />
@@ -120,7 +121,7 @@ const PrivacyPolicy = () => {
                     </p>
                 </motion.div>
 
-                {/* Grid of privacy feature cards - show 3 cards when data available */}
+                {/* Grid of privacy feature cards - always show with static or API data */}
                 {privacyFeatures.length > 0 && (
                     <div className="grid md:grid-cols-3 gap-6 mb-16">
                         {privacyFeatures.map((feature, index) => (
@@ -132,9 +133,7 @@ const PrivacyPolicy = () => {
                                 transition={{ duration: 0.4, delay: index * 0.1 }}
                                 className="group"
                             >
-                                {/* Animated card with hover effects. */}
                                 <div className="relative p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl h-full flex flex-col">
-                                    {/* A subtle gradient overlay that appears on hover. */}
                                     <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity duration-300" />
 
                                     <div className="relative z-10 flex flex-col flex-1">
