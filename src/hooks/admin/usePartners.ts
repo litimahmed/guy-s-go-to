@@ -1,86 +1,85 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getAllPartners, getPartner, createPartner, updatePartner, deletePartner } from "@/services/admin/partnerService";
-import { PartnerPayload } from "@/types/admin/partner";
+import { useState } from "react";
+import { staticAdminPartners } from "@/data/adminStaticContent";
+import { PartnerPayload, PartnerResponse } from "@/types/admin/partner";
 import { useToast } from "@/hooks/use-toast";
+
+// Local state to simulate CRUD operations
+let localPartners = [...staticAdminPartners];
 
 export const usePartners = () => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const { data: partners, isLoading, error, refetch } = useQuery({
-    queryKey: ["partners"],
-    queryFn: getAllPartners,
-    refetchOnWindowFocus: false,
-    staleTime: 30000,
-  });
+  const getPartner = async (partnerId: number): Promise<PartnerResponse | undefined> => {
+    return localPartners.find(p => p.id === partnerId);
+  };
 
-  const createMutation = useMutation({
-    mutationFn: createPartner,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partners"] });
-      toast({
-        title: "Success",
-        description: "Partner created successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const createPartner = async (payload: PartnerPayload) => {
+    setIsCreating(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const newPartner: PartnerResponse = {
+      ...payload,
+      id: Date.now(),
+      date_ajout: new Date().toISOString(),
+    };
+    
+    localPartners = [newPartner, ...localPartners];
+    setIsCreating(false);
+    
+    toast({
+      title: "Succès",
+      description: "Partenaire créé avec succès",
+    });
+    
+    return newPartner;
+  };
 
-  const updateMutation = useMutation({
-    mutationFn: ({ partnerId, payload }: { partnerId: number; payload: PartnerPayload }) =>
-      updatePartner(partnerId, payload),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partners"] });
-      toast({
-        title: "Success",
-        description: "Partner updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const updatePartner = async (partnerId: number, payload: PartnerPayload) => {
+    setIsUpdating(true);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    localPartners = localPartners.map(p =>
+      p.id === partnerId ? { ...p, ...payload } : p
+    );
+    
+    setIsUpdating(false);
+    
+    toast({
+      title: "Succès",
+      description: "Partenaire mis à jour avec succès",
+    });
+    
+    return localPartners.find(p => p.id === partnerId);
+  };
 
-  const deleteMutation = useMutation({
-    mutationFn: deletePartner,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["partners"] });
-      toast({
-        title: "Success",
-        description: "Partner deleted successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const deletePartner = async (partnerId: number) => {
+    setIsDeleting(true);
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    localPartners = localPartners.filter(p => p.id !== partnerId);
+    
+    setIsDeleting(false);
+    
+    toast({
+      title: "Succès",
+      description: "Partenaire supprimé avec succès",
+    });
+  };
 
   return {
-    partners,
-    isLoading,
-    error,
-    refetch,
-    getPartner: (partnerId: number) => getPartner(partnerId),
-    createPartner: (payload: PartnerPayload) => createMutation.mutateAsync(payload),
-    updatePartner: (partnerId: number, payload: PartnerPayload) =>
-      updateMutation.mutateAsync({ partnerId, payload }),
-    deletePartner: (partnerId: number) => deleteMutation.mutateAsync(partnerId),
-    isCreating: createMutation.isPending,
-    isUpdating: updateMutation.isPending,
-    isDeleting: deleteMutation.isPending,
+    partners: localPartners,
+    isLoading: false,
+    error: null,
+    refetch: () => {},
+    getPartner,
+    createPartner,
+    updatePartner,
+    deletePartner,
+    isCreating,
+    isUpdating,
+    isDeleting,
   };
 };

@@ -1,183 +1,160 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-    getProfessionals,
-    getProfessionalById,
-    createProfessional,
-    updateProfessional,
-    activateProfessional,
-    deactivateProfessional,
-    deleteProfessional,
-} from "@/services/admin/professionalService";
-import {
-    ProfessionalCreatePayload,
-    ProfessionalUpdatePayload,
-} from "@/types/admin/professional";
+import { useState, useCallback } from "react";
+import { staticProfessionals } from "@/data/adminStaticContent";
+import { Professional, ProfessionalCreatePayload, ProfessionalUpdatePayload } from "@/types/admin/professional";
 import { useToast } from "@/hooks/use-toast";
 
+// Local state to simulate CRUD operations
+let localProfessionals = [...staticProfessionals];
+
 export const useProfessionals = () => {
-    return useQuery({
-        queryKey: ["professionals"],
-        queryFn: getProfessionals,
-        refetchOnWindowFocus: false,
-        staleTime: 30000, // 30 seconds
-    });
+    const [data, setData] = useState(localProfessionals);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const refetch = useCallback(() => {
+        setData([...localProfessionals]);
+    }, []);
+
+    return {
+        data: { data: localProfessionals, count: localProfessionals.length },
+        isLoading,
+        error: null,
+        refetch
+    };
 };
 
 export const useProfessional = (id: string) => {
-    return useQuery({
-        queryKey: ["professional", id],
-        queryFn: () => getProfessionalById(id),
-        enabled: !!id,
-    });
+    const professional = localProfessionals.find(p => p.professionnel_id === id);
+    
+    return {
+        data: professional ? { data: professional } : undefined,
+        isLoading: false,
+        error: null
+    };
 };
 
 export const useCreateProfessional = () => {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (payload: ProfessionalCreatePayload) =>
-            createProfessional(payload),
-        onSuccess: async () => {
-            await queryClient.invalidateQueries({ queryKey: ["professionals"] });
-            toast({
-                title: "Succès",
-                description: "Professionnel créé avec succès",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Échec de la création du professionnel";
+    const mutateAsync = async (payload: ProfessionalCreatePayload) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        const newProfessional: Professional = {
+            ...payload,
+            professionnel_id: `prof-${Date.now()}`,
+            date_creation: new Date().toISOString(),
+            actif: true
+        };
+        
+        localProfessionals = [newProfessional, ...localProfessionals];
+        setIsPending(false);
+        
+        toast({
+            title: "Succès",
+            description: "Professionnel créé avec succès",
+        });
+        
+        return { data: newProfessional };
+    };
 
-            if (message.includes("phone") || message.includes("téléphone") || message.includes("telephone")) {
-                userMessage = "Format de téléphone invalide. Utilisez: +213XXXXXXXXX (13 caractères)";
-            } else if (message.includes("email")) {
-                userMessage = "Adresse email invalide ou déjà utilisée";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Erreur réseau. Vérifiez votre connexion.";
-            } else if (message.includes("session") || message.includes("token") || message.includes("401")) {
-                userMessage = "Votre session a expiré. Veuillez vous reconnecter.";
-            }
-
-            toast({
-                title: "Erreur",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+    return {
+        mutateAsync,
+        mutate: mutateAsync,
+        isPending,
+        isLoading: isPending
+    };
 };
 
 export const useUpdateProfessional = () => {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: ({ id, payload }: { id: string; payload: ProfessionalUpdatePayload }) =>
-            updateProfessional(id, payload),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["professionals"] });
-            toast({
-                title: "Succès",
-                description: "Professionnel modifié avec succès",
-            });
-        },
-        onError: () => {
-            toast({
-                title: "Erreur",
-                description: "Échec de la modification du professionnel",
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async ({ id, payload }: { id: string; payload: ProfessionalUpdatePayload }) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        localProfessionals = localProfessionals.map(p => 
+            p.professionnel_id === id ? { ...p, ...payload } : p
+        );
+        setIsPending(false);
+        
+        toast({
+            title: "Succès",
+            description: "Professionnel modifié avec succès",
+        });
+        
+        return { data: localProfessionals.find(p => p.professionnel_id === id) };
+    };
+
+    return {
+        mutateAsync,
+        mutate: mutateAsync,
+        isPending,
+        isLoading: isPending
+    };
 };
 
 export const useActivateProfessional = () => {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (id: string) => activateProfessional(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["professionals"] });
-            toast({
-                title: "Succès",
-                description: "Professionnel activé avec succès",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Échec de l'activation du professionnel";
-            if (message.includes("not found")) {
-                userMessage = "Professionnel introuvable.";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Erreur réseau. Vérifiez votre connexion.";
-            }
-            toast({
-                title: "Erreur",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (id: string) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        localProfessionals = localProfessionals.map(p => 
+            p.professionnel_id === id ? { ...p, actif: true } : p
+        );
+        setIsPending(false);
+        
+        toast({
+            title: "Succès",
+            description: "Professionnel activé avec succès",
+        });
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending };
 };
 
 export const useDeactivateProfessional = () => {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (id: string) => deactivateProfessional(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["professionals"] });
-            toast({
-                title: "Succès",
-                description: "Professionnel désactivé avec succès",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Échec de la désactivation du professionnel";
-            if (message.includes("not found")) {
-                userMessage = "Professionnel introuvable.";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Erreur réseau. Vérifiez votre connexion.";
-            }
-            toast({
-                title: "Erreur",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (id: string) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        localProfessionals = localProfessionals.map(p => 
+            p.professionnel_id === id ? { ...p, actif: false } : p
+        );
+        setIsPending(false);
+        
+        toast({
+            title: "Succès",
+            description: "Professionnel désactivé avec succès",
+        });
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending };
 };
 
 export const useDeleteProfessional = () => {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (id: string) => deleteProfessional(id),
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ["professionals"] });
-            toast({
-                title: "Succès",
-                description: "Professionnel supprimé avec succès",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Échec de la suppression du professionnel";
-            if (message.includes("not found")) {
-                userMessage = "Professionnel introuvable.";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Erreur réseau. Vérifiez votre connexion.";
-            }
-            toast({
-                title: "Erreur",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (id: string) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        localProfessionals = localProfessionals.filter(p => p.professionnel_id !== id);
+        setIsPending(false);
+        
+        toast({
+            title: "Succès",
+            description: "Professionnel supprimé avec succès",
+        });
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending };
 };

@@ -1,30 +1,43 @@
 /**
  * Services Hooks
- *
- * Custom hooks for managing services with React Query.
+ * Hardcoded data for admin services management
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { serviceService } from "@/services/admin/serviceService";
-import { useToast } from "@/hooks/admin/use-toast";
+import { useState, useCallback } from "react";
+import { staticServices } from "@/data/adminStaticContent";
 import { Service } from "@/types/admin/service";
+import { useToast } from "@/hooks/admin/use-toast";
+
+// Local state to simulate CRUD operations
+let localServices = [...staticServices];
 
 /**
  * Hook for fetching all services for a professional
  */
 export function useServices(proffessionnelId: string) {
-    const { data, isLoading, error, refetch } = useQuery({
-        queryKey: ["admin-services", proffessionnelId],
-        queryFn: () => serviceService.getServices(proffessionnelId),
-        enabled: !!proffessionnelId,
-    });
+    const filteredServices = proffessionnelId 
+        ? localServices.filter(s => s.proffessionnel_id === proffessionnelId)
+        : localServices;
 
     return {
-        services: data || [],
-        count: data?.length || 0,
-        isLoading,
-        error,
-        refetch,
+        services: filteredServices,
+        count: filteredServices.length,
+        isLoading: false,
+        error: null,
+        refetch: () => {},
+    };
+}
+
+/**
+ * Hook for fetching all services (no filter)
+ */
+export function useAllServices() {
+    return {
+        services: localServices,
+        count: localServices.length,
+        isLoading: false,
+        error: null,
+        refetch: () => {},
     };
 }
 
@@ -32,16 +45,12 @@ export function useServices(proffessionnelId: string) {
  * Hook for fetching a single service by ID
  */
 export function useService(serviceId: string) {
-    const { data, isLoading, error } = useQuery({
-        queryKey: ["admin-service", serviceId],
-        queryFn: () => serviceService.getServiceById(serviceId),
-        enabled: !!serviceId,
-    });
+    const service = localServices.find(s => s.service_id === serviceId);
 
     return {
-        service: data,
-        isLoading,
-        error,
+        service,
+        isLoading: false,
+        error: null,
     };
 }
 
@@ -49,119 +58,129 @@ export function useService(serviceId: string) {
  * Hook for creating a new service
  */
 export function useCreateService() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (formData: FormData) => serviceService.createService(formData),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-services"] });
-            toast({
-                title: "Success",
-                description: response.message || "Service created successfully",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Failed to create service";
+    const mutateAsync = async (formData: FormData) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
 
-            if (message.includes("session expired") || message.includes("token") || message.includes("unauthorized") || message.includes("401")) {
-                userMessage = "Your session has expired. Please log in again.";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Network error. Please check your connection.";
-            } else if (message.includes("phone") || message.includes("téléphone")) {
-                userMessage = "Invalid phone format. Use: +213XXXXXXXXX (13 characters)";
-            } else if (message.includes("required") || message.includes("requis")) {
-                userMessage = "Please fill in all required fields.";
-            } else if (message.includes("validation") || message.includes("invalid")) {
-                userMessage = "Please check your input and try again.";
-            }
+        const newService: Service = {
+            service_id: `serv-${Date.now()}`,
+            nom_service: formData.get("nom_service") as string || "Nouveau Service",
+            description_service: formData.get("description_service") as string || "",
+            prix_service: Number(formData.get("prix_service")) || 0,
+            duree_moyenne: Number(formData.get("duree_moyenne")) || 60,
+            actif: true,
+            date_creation: new Date().toISOString(),
+            photo_principale: "/placeholder.svg",
+            options: formData.get("options") as string || "",
+            jours_de_travail: formData.get("jours_de_travail") as string || "",
+            jours_de_repos: formData.get("jours_de_repos") as string || "",
+            jours_de_conge: "",
+            categorie: formData.get("categorie") as string || "",
+            proffessionnel_id: formData.get("proffessionnel_id") as string || "",
+        };
 
-            toast({
-                title: "Error",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+        localServices = [newService, ...localServices];
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Service créé avec succès",
+        });
+
+        return { message: "Service créé avec succès", data: newService };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
 
 /**
  * Hook for updating a service
  */
 export function useUpdateService() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: ({ serviceId, formData }: { serviceId: string; formData: FormData }) =>
-            serviceService.updateService(serviceId, formData),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-services"] });
-            queryClient.invalidateQueries({ queryKey: ["admin-service"] });
-            toast({
-                title: "Success",
-                description: response.message || "Service updated successfully",
-            });
-        },
-        onError: (error: Error) => {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to update service",
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async ({ serviceId, formData }: { serviceId: string; formData: FormData }) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        localServices = localServices.map(s => {
+            if (s.service_id === serviceId) {
+                return {
+                    ...s,
+                    nom_service: formData.get("nom_service") as string || s.nom_service,
+                    description_service: formData.get("description_service") as string || s.description_service,
+                    prix_service: Number(formData.get("prix_service")) || s.prix_service,
+                    duree_moyenne: Number(formData.get("duree_moyenne")) || s.duree_moyenne,
+                };
+            }
+            return s;
+        });
+
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Service modifié avec succès",
+        });
+
+        return { message: "Service modifié avec succès" };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
 
 /**
  * Hook for deleting a service
  */
 export function useDeleteService() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (serviceId: string) => serviceService.deleteService(serviceId),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-services"] });
-            toast({
-                title: "Success",
-                description: response.message || "Service deleted successfully",
-            });
-        },
-        onError: (error: Error) => {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to delete service",
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (serviceId: string) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        localServices = localServices.filter(s => s.service_id !== serviceId);
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Service supprimé avec succès",
+        });
+
+        return { message: "Service supprimé avec succès" };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
 
 /**
  * Hook for suspending a service
  */
 export function useSuspendService() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (serviceId: string) => serviceService.suspendService(serviceId),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-services"] });
-            toast({
-                title: "Success",
-                description: response.message || "Service suspended successfully",
-            });
-        },
-        onError: (error: Error) => {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to suspend service",
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (serviceId: string) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        localServices = localServices.map(s =>
+            s.service_id === serviceId ? { ...s, actif: false } : s
+        );
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Service suspendu avec succès",
+        });
+
+        return { message: "Service suspendu avec succès" };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }

@@ -1,168 +1,158 @@
 /**
  * useCategories Hook
- *
- * Custom hook for managing categories data in the admin panel.
+ * Hardcoded data for admin category management
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { categoryService } from "@/services/admin/categoryService";
+import { useState } from "react";
+import { staticCategories } from "@/data/adminStaticContent";
+import { Category } from "@/types/admin/category";
 import { useToast } from "@/hooks/use-toast";
 
-export function useCategories() {
-    const {
-        data,
-        isLoading,
-        error,
-        refetch,
-    } = useQuery({
-        queryKey: ["admin-categories"],
-        queryFn: () => categoryService.getCategories(),
-    });
+// Local state to simulate CRUD operations
+let localCategories = [...staticCategories];
 
+export function useCategories() {
     return {
-        categories: data?.data ?? [],
-        count: data?.count ?? 0,
-        isLoading,
-        error,
-        refetch,
+        categories: localCategories,
+        count: localCategories.length,
+        isLoading: false,
+        error: null,
+        refetch: () => {},
     };
 }
 
 export function useCreateCategory() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (formData: FormData) => categoryService.createCategory(formData),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
-            toast({
-                title: "Success",
-                description: response.message || "Category created successfully",
-            });
-        },
-        onError: (error: Error) => {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to create category",
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (formData: FormData) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const newCategory: Category = {
+            categorie_id: `${Date.now()}`,
+            nom_categorie: formData.get("nom_categorie") as string || "Nouvelle Catégorie",
+            description_categorie: formData.get("description_categorie") as string || "",
+            couleur_theme: formData.get("couleur_theme") as string || "#3B82F6",
+            ordre_affichage: localCategories.length + 1,
+            photo_principale_cat: "/placeholder.svg",
+            active: true,
+            date_creation: new Date().toISOString(),
+        };
+
+        localCategories = [newCategory, ...localCategories];
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Catégorie créée avec succès",
+        });
+
+        return { message: "Catégorie créée avec succès", data: newCategory };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
 
 export function useUpdateCategory() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: ({ categoryId, formData }: { categoryId: string | number; formData: FormData }) =>
-            categoryService.updateCategory(categoryId, formData),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
-            toast({
-                title: "Success",
-                description: response.message || "Category updated successfully",
-            });
-        },
-        onError: (error: Error) => {
-            toast({
-                title: "Error",
-                description: error.message || "Failed to update category",
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async ({ categoryId, formData }: { categoryId: string | number; formData: FormData }) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        localCategories = localCategories.map(c => {
+            if (String(c.categorie_id) === String(categoryId)) {
+                return {
+                    ...c,
+                    nom_categorie: formData.get("nom_categorie") as string || c.nom_categorie,
+                    description_categorie: formData.get("description_categorie") as string || c.description_categorie,
+                    couleur_theme: formData.get("couleur_theme") as string || c.couleur_theme,
+                };
+            }
+            return c;
+        });
+
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Catégorie modifiée avec succès",
+        });
+
+        return { message: "Catégorie modifiée avec succès" };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
 
 export function useDeleteCategory() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (categoryId: number) => categoryService.deleteCategory(categoryId),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
-            toast({
-                title: "Success",
-                description: response.message || "Category deleted successfully",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Failed to delete category";
-            if (message.includes("not found") || message.includes("introuvable")) {
-                userMessage = "Category not found. It may have already been deleted.";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Network error. Please check your connection.";
-            } else if (message.includes("permission") || message.includes("unauthorized")) {
-                userMessage = "You don't have permission to delete this category.";
-            }
-            toast({
-                title: "Error",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (categoryId: number) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        localCategories = localCategories.filter(c => String(c.categorie_id) !== String(categoryId));
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Catégorie supprimée avec succès",
+        });
+
+        return { message: "Catégorie supprimée avec succès" };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
 
 export function useSuspendCategory() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (categoryId: number) => categoryService.suspendCategory(categoryId),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
-            toast({
-                title: "Success",
-                description: response.message || "Category suspended successfully",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Failed to suspend category";
-            if (message.includes("not found") || message.includes("introuvable")) {
-                userMessage = "Category not found.";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Network error. Please check your connection.";
-            }
-            toast({
-                title: "Error",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (categoryId: number) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        localCategories = localCategories.map(c =>
+            String(c.categorie_id) === String(categoryId) ? { ...c, active: false } : c
+        );
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Catégorie suspendue avec succès",
+        });
+
+        return { message: "Catégorie suspendue avec succès" };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
 
 export function useResumeCategory() {
-    const queryClient = useQueryClient();
     const { toast } = useToast();
+    const [isPending, setIsPending] = useState(false);
 
-    return useMutation({
-        mutationFn: (categoryId: number) => categoryService.resumeCategory(categoryId),
-        onSuccess: (response) => {
-            queryClient.invalidateQueries({ queryKey: ["admin-categories"] });
-            toast({
-                title: "Success",
-                description: response.message || "Category activated successfully",
-            });
-        },
-        onError: (error: Error) => {
-            const message = error.message?.toLowerCase() || "";
-            let userMessage = "Failed to activate category";
-            if (message.includes("not found") || message.includes("introuvable")) {
-                userMessage = "Category not found.";
-            } else if (message.includes("network") || message.includes("failed to fetch")) {
-                userMessage = "Network error. Please check your connection.";
-            }
-            toast({
-                title: "Error",
-                description: userMessage,
-                variant: "destructive",
-            });
-        },
-    });
+    const mutateAsync = async (categoryId: number) => {
+        setIsPending(true);
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        localCategories = localCategories.map(c =>
+            String(c.categorie_id) === String(categoryId) ? { ...c, active: true } : c
+        );
+        setIsPending(false);
+
+        toast({
+            title: "Succès",
+            description: "Catégorie activée avec succès",
+        });
+
+        return { message: "Catégorie activée avec succès" };
+    };
+
+    return { mutateAsync, mutate: mutateAsync, isPending, isLoading: isPending };
 }
